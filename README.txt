@@ -7,7 +7,11 @@ allowing the hosts on your network to all be geographically liberated without
 having to update a stack of hosts files every few days.
 It also gets around the problem of devices not having easily-modified hosts files.
 
+For use with dns4me.net, use your uuid (see their FAQ for how to find this).
+This can be run from crontab by any user that has permission to 'rndc reload'
+(it does not require root access, just the correct group membership)
 
+ $ hosts2rpz.pl -u xxxxxxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 
 Of course its also useful for more than just geoblocking services - it can
