@@ -12,17 +12,25 @@ use HTTP::Request;
 # set $bind_reload_cmd to whatever is appropriate
 # for your system
 my $bind_reload_cmd = '/usr/sbin/rndc reload';
-my $script_version  = '0.2';
-my $in              = '';
-my $out             = '/etc/bind/rpz.db';
+
+# default file locations for input and output files
+my $in  = '';
+my $out = '/var/lib/bind/rpz.db';
+
+# URLs for dns4me.net hosts files API
+my $version_url = 'https://dns4me.net/api/v2/get_hosts_file_version';
+my $hosts_url   = 'https://dns4me.net/api/v2/get_hosts/hosts';
+
 my $uid;
 my $verbose = 0;
 my $help;
 my $force;
-my $version_url = 'https://dns4me.net/api/v2/get_hosts_file_version';
-my $hosts_url   = 'https://dns4me.net/api/v2/get_hosts/hosts';
+
+# User-Agent string for http(s) requests
+my $script_version = '0.2';
 my $agent = "hosts2rpz/${script_version} (https://github.com/f3sty/hosts2rpz))";
 
+# process any args the script was passed
 GetOptions(
     'help'     => \$help,
     'verbose+' => \$verbose,
@@ -50,6 +58,9 @@ my $clean_tmpfile = 0;
 
 my $ua = LWP::UserAgent->new;
 $ua->agent($agent);
+
+# if a UUID was passed as a script arg, fetch the
+# current hostsfile version to compare with the local file
 if ($uid) {
     $version_url .= "/${uid}";
     $hosts_url   .= "/${uid}";
@@ -63,6 +74,8 @@ if ($uid) {
         die "Something failed fetching the current hosts version\n";
     }
 
+    # If we're going to update an existing rpz zone file, check to
+    # see if it matches the current hosts version
     if ( -f $out ) {
         open DB, $out;
         while (<DB>) {
@@ -75,9 +88,14 @@ if ($uid) {
         }
         close DB;
     }
+
+    # If --force was specified, update the zone file
+    # regardless of the local version
     if ($force) {
         $verbose && print "Forcing re-generation\n";
     }
+
+    # otherwise only update it if the versions  don't match
     elsif ( $currentversion eq $hostsversion ) {
         $verbose && print "Already up to date, exiting.\n";
         exit;
@@ -89,6 +107,9 @@ if ($uid) {
         print $tmp $response->decoded_content;
         close $tmp;
     }
+
+    # Use the feshly retrieved file as our --in,
+    # and mark it for cleanup
     $in            = $tmpfile;
     $clean_tmpfile = 1;
 }
