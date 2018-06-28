@@ -52,6 +52,7 @@ if ($uid) {
     my $response = $ua->request($req);
     if ( $response->is_success ) {
         $hostsversion = $response->decoded_content;
+        $verbose && print "version available: $hostsversion\n";
     }
     else {
         die "Something failed fetching the current hosts version\n";
@@ -157,10 +158,10 @@ sub write_rr($$) {
 
 # rpz db SOA template
 format HEADER = 
-    $TTL 60
-    @            IN    SOA  localhost. root.localhost.  (
+$TTL 60
+@            IN    SOA  localhost. root.localhost.  (
 '@'
-            @>>>>>>>>>>>>>>>  ; serial for version:@<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+            @>>>>>>>>>>>>>>>  ; serial for version:@<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 $serial,$hostsversion
                           3H  ; refresh 
                           1H  ; retry 
