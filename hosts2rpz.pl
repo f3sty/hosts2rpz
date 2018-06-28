@@ -13,7 +13,7 @@ my $script_version = '0.2';
 my $in             = '';
 my $out            = '/etc/bind/rpz.db';
 my $uid;
-my $verbose;
+my $verbose     = 0;
 my $help;
 my $version_url = 'https://dns4me.net/api/v2/get_hosts_file_version';
 my $hosts_url   = 'https://dns4me.net/api/v2/get_hosts/hosts';
