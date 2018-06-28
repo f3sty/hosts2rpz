@@ -9,12 +9,16 @@ use List::Util qw[min max];
 use LWP::UserAgent;
 use HTTP::Request;
 
-my $script_version = '0.2';
-my $in             = '';
-my $out            = '/etc/bind/rpz.db';
+# set $bind_reload_cmd to whatever is appropriate
+# for your system
+my $bind_reload_cmd = '/usr/sbin/rndc reload';
+my $script_version  = '0.2';
+my $in              = '';
+my $out             = '/etc/bind/rpz.db';
 my $uid;
-my $verbose     = 0;
+my $verbose = 0;
 my $help;
+my $force;
 my $version_url = 'https://dns4me.net/api/v2/get_hosts_file_version';
 my $hosts_url   = 'https://dns4me.net/api/v2/get_hosts/hosts';
 my $agent = "hosts2rpz/${script_version} (https://github.com/f3sty/hosts2rpz))";
@@ -24,7 +28,8 @@ GetOptions(
     'verbose+' => \$verbose,
     'uid=s'    => \$uid,
     'in=s'     => \$in,
-    'out=s'    => \$out
+    'out=s'    => \$out,
+    'force'    => \$force
 );
 
 if ($help) {
@@ -70,23 +75,22 @@ if ($uid) {
         }
         close DB;
     }
-
-    if ( $currentversion eq $hostsversion ) {
+    if ($force) {
+        $verbose && print "Forcing re-generation\n";
+    }
+    elsif ( $currentversion eq $hostsversion ) {
         $verbose && print "Already up to date, exiting.\n";
         exit;
     }
-    else {
-        my $req = HTTP::Request->new( GET => $hosts_url );
-        my $response = $ua->request($req);
-        if ( $response->is_success ) {
-            open my $tmp, ">${tmpfile}";
-            print $tmp $response->decoded_content;
-            close $tmp;
-        }
-        $in            = $tmpfile;
-        $clean_tmpfile = 1;
+    $req = HTTP::Request->new( GET => $hosts_url );
+    $response = $ua->request($req);
+    if ( $response->is_success ) {
+        open my $tmp, ">${tmpfile}";
+        print $tmp $response->decoded_content;
+        close $tmp;
     }
-
+    $in            = $tmpfile;
+    $clean_tmpfile = 1;
 }
 
 # read the input file
@@ -137,6 +141,22 @@ if ($clean_tmpfile) {
 }
 
 close $outfile;
+select(STDOUT);
+
+if ($bind_reload_cmd) {
+    my $msg = '';
+    my $exitstatus;
+    $verbose && print "Reloading bind\n";
+    open my $reload, "$bind_reload_cmd|"
+      or die "Failed to execute $bind_reload_cmd - $@\n";
+    while (<$reload>) {
+        $msg .= $_;
+    }
+    close $reload;
+    $exitstatus = $?;
+    $verbose && print $msg;
+    exit($?);
+}
 
 sub printhelp {
     print "\n\nhosts2rpz.pl - convert hosts files to rpz zone format\n";
@@ -144,6 +164,7 @@ sub printhelp {
     print "   -u | --uid      dns4me user UUID\n";
     print "   -i | --in       input file\n";
     print "   -o | --out      output file (rpz db)\n";
+    print "   -f | --force    force update\n";
     print "   -v | --verbose  increase script verbosity\n";
     print "   -h | --help     You are here\n\n";
 }
